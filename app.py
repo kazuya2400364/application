@@ -18,7 +18,7 @@ list = pd.read_csv("list.csv")
 # Streamlit CloudのSecretsからGeminiAPIキーを取得してモデルを初期化する関数
 def get_gemini_model():
     try:
-        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+        genai.configure(api_key="AIzaSyBXhHwts5bUUawb9bjE343vFShSTJAkXaw")
         return genai.GenerativeModel('gemini-1.5-flash')
     except KeyError:
         st.error("Gemini APIキーが Streamlit Cloud の Secrets に設定されていません。")
@@ -131,15 +131,15 @@ def get_address(zip_code):
 
 # 以下streamlitの出力
 def main():
-    st.title("エアコン補助金・見積自動判定")
+    st.title("エアコン補助金・見積判定")
 
     # Gemini モデルをセッションステートに保存 (初回のみロード)
     if "gemini_model" not in st.session_state:
         st.session_state["gemini_model"] = get_gemini_model()
 
-    uploaded_file = st.file_uploader("エアコン本体の型番が写った画像をアップロードしてください", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("エアコン本体の型番が写った画像をアップロードしてください。", type=["jpg", "jpeg", "png"])
     if uploaded_file is None:
-        st.text("参考例")
+        st.write("参考例")
         st.image("photo.jpg")
 
     if uploaded_file is not None:
@@ -149,7 +149,7 @@ def main():
             image.save(buffer, format='JPEG')
             image_bytes = buffer.getvalue()
 
-            st.subheader("アップロード画像")
+            st.subheader("●アップロード画像")
             st.image(image, use_container_width=True)
 
             extracted_info = extract_info_with_gemini(st.session_state["gemini_model"], image_bytes)
@@ -167,7 +167,8 @@ def main():
                     "定格消費電力(暖房低温)": [extracted_info.get("定格消費電力(暖房低温)")]
                 }
                 df = pd.DataFrame(df_data)
-                st.subheader("エアコン情報")
+                st.markdown("&nbsp;&nbsp;&nbsp;")
+                st.subheader("●エアコン情報")
                 st.dataframe(df)                
 
                 # 定格能力(冷房)を数値に変換
@@ -181,19 +182,24 @@ def main():
                 years_passed = current_year - manufacture_year
 
                 if years_passed >= 15:
-                    st.text("お客様のエアコンは製造から" + str(years_passed) + "年経過しているため、20,000~70,000ポイント付与されます。")
+                    st.info(f"### **お客様のエアコンは製造から{years_passed}年経過しているため、買い替えで20,000~70,000ポイント付与されます。**")
+                    st.write(f"買い替えの場合、上記補助金が受領できるのは<span style='color:red; font-weight:bold;'>2027年3月31日</span>までです。<br>※予算の消化状況により期日が早まる可能性があります。", unsafe_allow_html=True)
+                    st.markdown("&nbsp;&nbsp;&nbsp;")
                 else:
-                    st.text("お客様のエアコンは製造から" + str(years_passed) + "年経過しているため、9,000~23,000ポイント付与されます。")
+                    st.info(f"### **お客様のエアコンは製造から{years_passed}年経過しているため、買い替えで9,000~23,000ポイント付与されます。**")
+                    st.write(f"買い替えの場合、上記補助金が受領できるのは<span style='color:red; font-weight:bold;'>2027年3月31日</span>までです。<br>※予算の消化状況により期日が早まる可能性があります。", unsafe_allow_html=True)
+                    st.markdown("&nbsp;&nbsp;&nbsp;")
                 
 
-                if st.button("製品を選んで、見積もりをする"):
+                if st.button("詳細な見積もりはこちら"):
                     st.session_state["flage"] = True
                 if "flage" in st.session_state and st.session_state["flage"]:
-                    st.subheader("製品選択")
-                    st.text("現在ご使用中のエアコンは" +  str(kw_size_trans(rated_cooling_capacity)) + "畳用です")
+                    st.markdown("&nbsp;&nbsp;&nbsp;")
+                    st.subheader("●製品選択")
+                    st.info(f"現在ご使用中のエアコンは{kw_size_trans(rated_cooling_capacity)}畳用です。")
                     st.image("model.png")
-                    model = st.radio("",("S224ATES-W(6畳用)", "S254ATES-W(8畳用)", "S284ATES-W(10畳用)"))
-                    model = model.split("(")[0]
+                    _model = st.radio("",("S224ATES-W(6畳用)", "S254ATES-W(8畳用)", "S284ATES-W(10畳用)"))
+                    model = _model.split("(")[0]
 
                     price = list[list["型番"] == model]["機器販売価格"].iloc[0]
                     cost = list[list["型番"] == model]["基本工事費"].iloc[0]
@@ -201,8 +207,9 @@ def main():
                     cooling_capacit = list[list["型番"] == model]["定格能力"].iloc[0]
                     subsidy = get_points(energy_efficient,  cooling_capacit, years_passed)
 
-                    st.subheader("お客さま情報")
-                    st.text("myTOKYOGASアカウントをお持ちの方は、ログインすることでお客さま情報を簡単に入力できます。")
+                    st.markdown("&nbsp;&nbsp;&nbsp;")
+                    st.subheader("●お客さま情報")
+                    st.info("myTOKYOGASアカウントをお持ちの方は、お客さま情報を自動入力できます。")
                     with open("config.yaml", encoding="utf-8") as file:
                         config = yaml.load(file, Loader=SafeLoader)
 
@@ -250,6 +257,7 @@ def main():
                         phone_number = st.text_input("電話番号(半角数字・ハイフン無)", value=user_phone_number, placeholder="0123456789")
                         email = st.text_input("メールアドレス", value=user_email, placeholder="sample@tokyo-gas.co.jp")
                         customer_number = st.text_input("お客さま番号", value=user_customer_number, placeholder="19999999999")
+                        st.markdown("&nbsp;&nbsp;&nbsp;")
                         
                     else:
                         zip_code = st.text_input("郵便番号(半角数字・ハイフン無)", placeholder = "1234567")
@@ -258,18 +266,24 @@ def main():
                         phone_number = st.text_input("電話番号(半角数字・ハイフン無)", placeholder = "0123456789")
                         email = st.text_input("メールアドレス", placeholder = "sample@tokyo-gas.co.jp")
                         customer_number = st.text_input("お客さま番号", placeholder = "19999999999")
+                        st.markdown("&nbsp;&nbsp;&nbsp;")
                   
-                    if st.button("見積もりをする"):
+                    if st.button("お客さま情報を登録し、見積もりをする"):
                         if not address or not name or not phone_number or not email or not customer_number:
                             st.error("すべての項目を入力してください。")
                         else:
-                            st.subheader("見積もり")
+                            st.markdown("&nbsp;&nbsp;&nbsp;")
+                            st.subheader("●見積もり")
                             st.image("model.png")
-                            st.write("##### 型番：" + model)
+                            st.write("##### 型番：" + _model)
                             st.write("##### 機器販売価格：" + str(format(price, ",")) + "円")
                             st.write("##### 基本工事費：" + str(format(cost, ",")) + "円")
                             st.write("##### 補助金額：" + str(format(subsidy, ",")) + "pt")
-                            st.write("### 実質負担額：" + str(format((price + cost - subsidy), ",")) + "円")
+                            st.info("### 実質負担額：" + str(format((price + cost - subsidy), ",")) + "円")
+                            st.markdown("&nbsp;&nbsp;&nbsp;")
+                            st.write("※補助金の正式名称は東京都が実施する「家庭のゼロエミッション行動推進事業」です。補助金は受給条件・予算枠があり、支給されない場合や上記金額での支給がされない場合があります。")
+                            st.write("※補助金の受領には、事前に登録された事業者・店舗にて購入する、都内に住所を有する個人である、その住所を公的な書類（免許証等）で証明できるなどの条件があります。詳しくはこちらをご確認ください。")
+                            st.write("https://www.tz-points.jp/system")
             else:
                 st.error("Gemini モデルの初期化に失敗しました。")
         else:
